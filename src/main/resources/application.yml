@@ -1,0 +1,64 @@
+
+example-bean:
+  list:
+    - name: xbean
+      value: 11111
+    - name: ybean
+      value: 22222
+    - name: zbean
+      value: 33333
+
+eureka:
+  instance:
+    hostname: localhost
+    appname: egw
+  client:
+    enabled: true
+    service-url: http://localhost:23001/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+spring:
+  application:
+    name: egw
+  cloud:
+    netflix:
+      ribbon: true
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+#      default-filters:
+#        - name: CustomFilter
+#          args:
+#            baseMessage: "message mess"
+#            preLogger: true
+#            postLogger: true
+      routes:
+        - id: hsvc
+          uri: lb://hsvc
+          predicates:
+            - Path=/hsvc/**
+          filters:
+            - CustomFilter
+            - name: CacheRequestBody
+              args:
+                bodyClass: java.lang.String
+      filter:
+        strip-prefix:
+          enabled: true
+#      enabled: true
+logging:
+  level:
+    root: debug
+server:
+  tomcat:
+    accesslog:
+      directory: logs
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+        # refresh,health,env,info,beans,httpexchanges

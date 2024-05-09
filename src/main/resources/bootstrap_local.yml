@@ -1,0 +1,49 @@
+#server:
+#  tomcat:
+#
+#spring:
+#  profiles:
+#    active: local
+#  cloud:
+#    gateway:
+##      discovery:
+##        locator:
+##          enabled: true
+#      default-filters:
+#        - name: customFilter
+#          args:
+#            baseMessage: messege mess
+#            preLogger: true
+#            postLogger: true
+##      globalcors:
+##        corsConfigurations:
+##          '[/**]':
+##            allowedOrigins: '*'
+##            allowedMethods:
+##              - POST
+##              - GET
+##              - PUT
+##              - OPTIONS
+##              - DELETE
+#      routes:
+#        - id: egw
+#          uri: http://localhost:18081
+#          predicates:
+#            - Path: /egw/**
+##      routes:
+#        - id: egw1
+##          uri: lb://hsvc
+#          uri: http://localhost:18081
+#          predicates:
+#            - name: Path
+#              args:
+#                patterns: /test
+#
+#            - args:
+#                method:
+#                  - POST
+#                  - GET
+#logging:
+#  level:
+#    root: debug
+#
