@@ -21,7 +21,9 @@ import reactor.test.StepVerifier;
 import java.util.Iterator;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static reactor.core.publisher.Mono.when;
 
 @Slf4j
@@ -30,41 +32,89 @@ public class CustomFilterTest {
 
     private GatewayFilterChain filterChain = mock(GatewayFilterChain.class);
 
+//    @Test
+//    public void testPublicFilter(){
+//        MockServerHttpRequest request = MockServerHttpRequest.get("/auth").build();
+//        MockServerHttpResponse response = new MockServerHttpResponse();
+//        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+//
+//        CustomFilter customFilter = new CustomFilter();
+//        var filter = customFilter.apply(new FilterConfig());
+//
+//        GatewayFilterChain filterChain = mock(GatewayFilterChain.class);
+//        ArgumentCaptor<ServerWebExchange> captor = ArgumentCaptor.forClass(ServerWebExchange.class);
+//
+//        assertNotNull(exchange);
+//        assertNotNull(filterChain);
+//        assertNotNull(filter);
+//        assertNotNull(captor);
+//
+//        Mono<Void> source = Mono.empty();
+//        // Setup filterChain to return the source Mono when filter is called
+//        when(filterChain.filter(any(ServerWebExchange.class))).thenReturn(source);
+//
+//        // Call filter and capture the exchange
+//        filter.filter(exchange, filterChain);
+//
+//        // Ensure the filterChain.filter method is called with the captured exchange
+//        verify(filterChain).filter(captor.capture());
+//
+//        StepVerifier.create(filter.filter(exchange, filterChain))
+//                .expectComplete()
+//                .verify();
+//
+//        ServerWebExchange resultExchange = captor.getValue();
+//
+//        // Verify result exchange status code
+//        assertEquals(200, resultExchange.getResponse().getStatusCode().value());
+//    }
+
     @Test
-    public void testPublicFilter(){
-        MockServerHttpRequest request = MockServerHttpRequest.get( "/auth").build();
+    public void testPublicFilter() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/auth").build();
         MockServerHttpResponse response = new MockServerHttpResponse();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
         CustomFilter customFilter = new CustomFilter();
-
         var filter = customFilter.apply(new FilterConfig());
+
         GatewayFilterChain filterChain = mock(GatewayFilterChain.class);
         ArgumentCaptor<ServerWebExchange> captor = ArgumentCaptor.forClass(ServerWebExchange.class);
-        assertNotNull(exchange);
-        assertNotNull(filterChain);
-        assertNotNull(filter);
 
-        when(filterChain.filter(captor.capture())).thenReturn(Mono.just("1"));
+        // Check assertions for objects that should not be null
+//        assertNotNull(exchange,"exchange null");
+//        assertNotNull(filterChain,"filterChain null");
+//        assertNotNull(filter,"filter null");
+//        assertNotNull(captor,"captor null");
+
+        // Ensure source is not null
+//        Mono<Void> source = Mono.empty();
+        Mono<Void> source = Mono.empty().doOnNext(v -> { /* do something */ }).then();
+        assertNotNull(source);
+
+        // Setup filterChain to return the source Mono when filter is called
+        when(filterChain.filter(any(ServerWebExchange.class))).thenReturn(source);
+
+        // Call filter and capture the exchange
+        //filter.filter(exchange, filterChain);
+
+        // Ensure the filterChain.filter method is called with the captured exchange
 
 
-
-
+        // StepVerifier to verify the Mono completes successfully
         StepVerifier.create(filter.filter(exchange, filterChain))
-                .verifyComplete();
+                .expectComplete()
+                .verify();
+        verify(filterChain).filter(captor.capture());
+        // Get the captured exchange
+        ServerWebExchange resultExchange = captor.getValue();
 
-        var resultExchange = captor.getValue();
+        // Ensure resultExchange is not null before accessing it
+        assertNotNull(resultExchange);
 
-
-
-        // verify result exchange
-        assertEquals("status 200 equals "+resultExchange.getResponse().getStatusCode().value(), resultExchange.getResponse().getStatusCode().value(), 200);
-//        WebFilterChain chain = (exchange, filterChain) -> {
-//            FilterConfig config = new FilterConfig();
-//            exchange.getAttributes().put("config", config);
-//            return customFilter.apply(config);
-//
-//        };
-
+        // Verify result exchange status code
+        assertEquals(200, resultExchange.getResponse().getStatusCode().value());
     }
+
+
 }
