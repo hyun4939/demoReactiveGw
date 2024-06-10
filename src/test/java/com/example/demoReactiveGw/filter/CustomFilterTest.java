@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.mockito.Mockito.*;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -33,6 +35,7 @@ public class CustomFilterTest {
     @Test
     public void testPublicFilter(){
         MockServerHttpRequest request = MockServerHttpRequest.get( "/auth").build();
+
         MockServerHttpResponse response = new MockServerHttpResponse();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
@@ -44,8 +47,9 @@ public class CustomFilterTest {
         assertNotNull(exchange);
         assertNotNull(filterChain);
         assertNotNull(filter);
-
-        when(filterChain.filter(captor.capture())).thenReturn(Mono.just("1"));
+        Mono<Void> rtn = Mono.never();
+        Mockito.when(filterChain.filter(captor.capture()))
+                .thenReturn(rtn);
 
 
 
