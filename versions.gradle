@@ -1,0 +1,15 @@
+ext.deps = [:]
+
+def versions = [:]
+versions.junit = "5.10.2"
+versions.junit_platform = "1.2.0"
+
+
+def test = [:]
+test.junit = "org.junit.jupiter:junit-jupiter:$versions.junit"
+test.junit_api = "org.junit.jupiter:junit-jupiter-api:$versions.junit"
+test.junit_engine = "org.junit.jupiter:junit-jupiter-engine:$versions.junit"
+test.junit_params = "org.junit.jupiter:junit-jupiter-params:$versions.junit"
+test.junit_launcher = "org.junit.platform:junit-platform-launcher:$versions.junit_platform"
+
+ext.test = test

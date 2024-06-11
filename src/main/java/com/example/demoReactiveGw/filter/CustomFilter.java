@@ -41,8 +41,9 @@ public class CustomFilter extends AbstractGatewayFilterFactory<FilterConfig> {
 
             // Global Post Filter
             return chain.filter(exchange).then(Mono.fromRunnable(() -> {
+                log.info("custom Filter End : response code -> {}", response.getStatusCode());
                 if(config.isPostLogger()) {
-                    log.info("custom Filter End : response code -> {}", response.getStatusCode());
+                    log.info("-custom Filter End : response code -> {}", response.getStatusCode());
                 }
             }));
         };
