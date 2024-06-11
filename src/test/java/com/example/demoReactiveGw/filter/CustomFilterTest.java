@@ -62,7 +62,7 @@ public class CustomFilterTest {
         var resultExchange = captor.getValue();
 
         // verify result exchange
-        //assertEquals("status 200 equals "+resultExchange.getResponse().getStatusCode().value(),
+        // assertEquals("status 200 equals "+resultExchange.getResponse().getStatusCode().value(),
         // getResponse().getStatusCode().value(), 200);
 
     }
