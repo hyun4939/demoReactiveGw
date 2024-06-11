@@ -49,35 +49,21 @@ public class CustomFilterTest {
         var filter = customFilter.apply(new FilterConfig());
         GatewayFilterChain filterChain = mock(GatewayFilterChain.class);
         ArgumentCaptor<ServerWebExchange> captor = ArgumentCaptor.forClass(ServerWebExchange.class);
-        assertNotNull(exchange);
-        assertNotNull(filterChain);
-        assertNotNull(filter);
+
         Mono<Void> rtn = Mono.never();
         Mockito.when(filterChain.filter(captor.capture()))
                 .thenReturn(rtn);
-//assertDoesNotThrow(StepVerifier.create(filter.filter(exchange, filterChain))
-//        .verifyComplete());
-        Mockito.when(filterChain.filter(exchange).then(Mono.fromRunnable(() -> {
 
+        Mockito.when(filterChain.filter(exchange).then(Mono.fromRunnable(() -> {
                 }))).thenReturn(Mono.just("{}"));
 
         StepVerifier.create(filter.filter(exchange, filterChain))
                 .verifyComplete();
-
         var resultExchange = captor.getValue();
-
-
 
         // verify result exchange
         //assertEquals("status 200 equals "+resultExchange.getResponse().getStatusCode().value(),
-        // resultExchange.
         // getResponse().getStatusCode().value(), 200);
-//        WebFilterChain chain = (exchange, filterChain) -> {
-//            FilterConfig config = new FilterConfig();
-//            exchange.getAttributes().put("config", config);
-//            return customFilter.apply(config);
-//
-//        };
 
     }
 }
