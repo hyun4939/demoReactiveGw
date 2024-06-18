@@ -20,8 +20,14 @@ import reactor.core.publisher.Mono;
 public class CustomGlobalFilter  implements GlobalFilter, Ordered{
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        log.info("custom global filter");
+        log.info("GG custom global filter");
         ServerHttpRequest request = exchange.getRequest();
+
+        if( "/hsvc/test2".equals( request.getURI().getPath() )) {
+            ServerHttpRequest newRequest = exchange.getRequest().mutate().path("/test").build();
+
+            return chain.filter(exchange.mutate().request(newRequest).build());
+        }
 
         String body = exchange.getAttribute(ServerWebExchangeUtils.CACHED_REQUEST_BODY_ATTR);
 
@@ -36,7 +42,7 @@ public class CustomGlobalFilter  implements GlobalFilter, Ordered{
 
     @Override
     public int getOrder() {
-        return 3;
+        return -1;
     }
 
 }

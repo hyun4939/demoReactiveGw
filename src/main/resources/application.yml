@@ -51,10 +51,8 @@ logging:
   level:
     root: debug
 server:
-  tomcat:
-    accesslog:
-      directory: logs
-      enabled: true
+  port: 18080
+
 
 management:
   endpoints:
