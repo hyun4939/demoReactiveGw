@@ -23,11 +23,11 @@ public class CustomGlobalFilter  implements GlobalFilter, Ordered{
         log.info("GG custom global filter");
         ServerHttpRequest request = exchange.getRequest();
 
-        if( "/hsvc/test2".equals( request.getURI().getPath() )) {
-            ServerHttpRequest newRequest = exchange.getRequest().mutate().path("/test").build();
-
-            return chain.filter(exchange.mutate().request(newRequest).build());
-        }
+//        if( "/hsvc/test2".equals( request.getURI().getPath() )) {
+//            ServerHttpRequest newRequest = exchange.getRequest().mutate().path("/test").build();
+//
+//            return chain.filter(exchange.mutate().request(newRequest).build());
+//        }
 
         String body = exchange.getAttribute(ServerWebExchangeUtils.CACHED_REQUEST_BODY_ATTR);
 

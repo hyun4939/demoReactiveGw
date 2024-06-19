@@ -28,7 +28,7 @@ public class CustomFilter extends AbstractGatewayFilterFactory<FilterConfig> {
             ServerHttpResponse response = exchange.getResponse();
             String str = exchange.getAttribute(ServerWebExchangeUtils.CACHED_REQUEST_BODY_ATTR);
 
-            resolveBodyFromRequest(request);
+            //resolveBodyFromRequest(request);
 
             var t = request.getHeaders().getFirst("test");
             log.info("custom Filter baseMessage : {} , header  {}", config.getBaseMessage(), t);
@@ -39,7 +39,7 @@ public class CustomFilter extends AbstractGatewayFilterFactory<FilterConfig> {
                 log.info("custom Filter Start : request id -> {}", request.getId());
             }
 
-            // Global Post Filter
+
             return chain.filter(exchange).then(Mono.fromRunnable(() -> {
                 log.info("custom Filter End : response code -> {}", response.getStatusCode());
                 if(config.isPostLogger()) {
@@ -65,7 +65,7 @@ public class CustomFilter extends AbstractGatewayFilterFactory<FilterConfig> {
             buffer.read(bytes);
             String bodyString2 = new String(bytes, StandardCharsets.UTF_8);
             log.info("===> {}",bodyString2);
-            buffer.readPosition(0);
+//            buffer.readPosition(0);
            // buffer.write(bytes);
 
 //            DataBufferUtils.release(buffer);
