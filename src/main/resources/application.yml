@@ -1,4 +1,3 @@
-
 example-bean:
   list:
     - name: xbean
@@ -10,13 +9,16 @@ example-bean:
 
 eureka:
   instance:
-    hostname: localhost
+    hostname: t1
     appname: egw
+
   client:
     enabled: true
-    service-url: http://localhost:23001/eureka/
+    service-url:
+      defaultZone: http://localhost:23001/eureka/
     register-with-eureka: true
     fetch-registry: true
+
 spring:
   application:
     name: egw
@@ -47,14 +49,14 @@ spring:
         strip-prefix:
           enabled: true
 #      enabled: true
+  main:
+   web-application-type: reactive
+
 logging:
   level:
     root: debug
 server:
-  tomcat:
-    accesslog:
-      directory: logs
-      enabled: true
+  port: 18080
 
 management:
   endpoints:
