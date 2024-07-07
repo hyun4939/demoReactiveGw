@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 // 간단한 로컬 캐시 구현
-enum LocalResponseCache {
+public enum LocalResponseCache {
     INSTANCE;
 
     private final Map<String, String> cache = new ConcurrentHashMap<>();

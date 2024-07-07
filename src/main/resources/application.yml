@@ -1,22 +1,20 @@
-example-bean:
-  list:
-    - name: xbean
-      value: 11111
-    - name: ybean
-      value: 22222
-    - name: zbean
-      value: 33333
+server:
+  port: 18080
 
 eureka:
   instance:
-    hostname: localhost
+    hostname: t1
     appname: egw
   client:
     enabled: true
-    service-url: http://localhost:23001/eureka/
+    service-url:
+      defaultZone: http://localhost:23001/eureka/
     register-with-eureka: true
     fetch-registry: true
+
 spring:
+  main:
+    web-application-type: reactive
   application:
     name: egw
   cloud:
@@ -38,8 +36,8 @@ spring:
           predicates:
             - Path=/hsvc/**
           filters:
-            - ResponseDecorator
-            - CustomFilter
+#            - CacheLoggingFilter
+#            - CustomFilter
             - name: CacheRequestBody
               args:
                 bodyClass: java.lang.String
@@ -48,18 +46,12 @@ spring:
           enabled: true
 #      enabled: true
 
-  main:
-    web-application-type: reactive
+
 
 logging:
   level:
     root: debug
-server:
-  port: 18080
-  tomcat:
-    accesslog:
-      directory: logs
-      enabled: true
+
 
 management:
   endpoints:
@@ -67,3 +59,13 @@ management:
       exposure:
         include: '*'
         # refresh,health,env,info,beans,httpexchanges
+
+
+example-bean:
+  list:
+    - name: xbean
+      value: 11111
+    - name: ybean
+      value: 22222
+    - name: zbean
+      value: 33333
