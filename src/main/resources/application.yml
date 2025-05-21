@@ -29,6 +29,14 @@ spring:
       discovery:
         locator:
           enabled: true
+      redis-truststore: # New Properties for Redis TrustStore
+        enabled: true # To enable/disable the customizer
+        redis:
+          host: localhost
+          port: 6379
+          password: # Optional: password for Redis
+          key: "gateway:truststore:jks" # Key where the Base64 JKS is stored
+        jks-password: "changeit" # Password for the JKS itself
 #      default-filters:
 #        - name: CustomFilter
 #          args:

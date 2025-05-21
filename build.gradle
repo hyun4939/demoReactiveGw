@@ -53,6 +53,8 @@ dependencies {
 	testImplementation test.junit_params
 	testImplementation test.junit_launcher
 
+	implementation 'redis.clients:jedis:5.1.0' // Added Jedis dependency
+	testImplementation 'org.mockito:mockito-core:5.11.0'
 
 
 //	testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.8.2'
