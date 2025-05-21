@@ -53,7 +53,7 @@ dependencies {
 	testImplementation test.junit_params
 	testImplementation test.junit_launcher
 
-	implementation 'redis.clients:jedis:5.1.0' // Added Jedis dependency
+	implementation 'io.lettuce:lettuce-core:6.3.1.RELEASE'
 	testImplementation 'org.mockito:mockito-core:5.11.0'
 
 

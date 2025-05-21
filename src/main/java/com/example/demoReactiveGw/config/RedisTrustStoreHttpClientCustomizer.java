@@ -7,8 +7,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.config.HttpClientCustomizer;
 import reactor.netty.http.client.HttpClient;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.exceptions.JedisException;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisStringCommands;
+import io.lettuce.core.RedisException;
 
 import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
@@ -25,14 +28,14 @@ public class RedisTrustStoreHttpClientCustomizer implements HttpClientCustomizer
 
     private static final Logger log = LoggerFactory.getLogger(RedisTrustStoreHttpClientCustomizer.class);
 
-    // Functional interface for providing a Jedis instance. This helps in mocking.
+    // Functional interface for providing a Lettuce connection. This helps in mocking.
     @FunctionalInterface
-    public interface JedisConnectionProvider extends Supplier<Jedis> {
+    public interface LettuceConnectionProvider extends Supplier<StatefulRedisConnection<String, String>> {
     }
 
     private final String jksKeyInRedis;
     private final String jksPassword;
-    private final JedisConnectionProvider jedisConnectionProvider;
+    private final LettuceConnectionProvider lettuceConnectionProvider;
 
 
     // Constructor for Spring's dependency injection
@@ -43,12 +46,15 @@ public class RedisTrustStoreHttpClientCustomizer implements HttpClientCustomizer
             @Value("${spring.cloud.gateway.redis-truststore.redis.key}") String jksKeyInRedis,
             @Value("${spring.cloud.gateway.redis-truststore.jks-password}") String jksPassword) {
         this(jksKeyInRedis, jksPassword, () -> {
-            Jedis jedis = new Jedis(redisHost, redisPort);
-            String effectiveRedisPassword = (redisPassword != null && redisPassword.isEmpty()) ? null : redisPassword;
-            if (effectiveRedisPassword != null) {
-                jedis.auth(effectiveRedisPassword);
+            RedisURI.Builder redisURIBuilder = RedisURI.builder()
+                    .withHost(redisHost)
+                    .withPort(redisPort);
+            if (redisPassword != null && !redisPassword.isEmpty()) {
+                redisURIBuilder.withPassword(redisPassword.toCharArray());
             }
-            return jedis;
+            RedisURI redisURI = redisURIBuilder.build();
+            RedisClient redisClient = RedisClient.create(redisURI);
+            return redisClient.connect();
         });
         log.info("RedisTrustStoreHttpClientCustomizer (Spring constructor) initialized with Redis host: {}, port: {}, JKS key: {}",
                 redisHost, redisPort, this.jksKeyInRedis);
@@ -62,11 +68,11 @@ public class RedisTrustStoreHttpClientCustomizer implements HttpClientCustomizer
         }
     }
 
-    // Constructor for testing, allowing JedisConnectionProvider injection
-    public RedisTrustStoreHttpClientCustomizer(String jksKeyInRedis, String jksPassword, JedisConnectionProvider jedisConnectionProvider) {
+    // Constructor for testing, allowing LettuceConnectionProvider injection
+    public RedisTrustStoreHttpClientCustomizer(String jksKeyInRedis, String jksPassword, LettuceConnectionProvider lettuceConnectionProvider) {
         this.jksKeyInRedis = jksKeyInRedis;
         this.jksPassword = jksPassword;
-        this.jedisConnectionProvider = jedisConnectionProvider;
+        this.lettuceConnectionProvider = lettuceConnectionProvider;
         log.info("RedisTrustStoreHttpClientCustomizer (Test constructor) initialized with JKS key: {}", this.jksKeyInRedis);
     }
 
@@ -95,8 +101,8 @@ public class RedisTrustStoreHttpClientCustomizer implements HttpClientCustomizer
             log.error("Error processing JKS data for HttpClient customization with key '{}': {}. HttpClient will not be customized.",
                     this.jksKeyInRedis, e.getMessage(), e);
             return httpClient;
-        } catch (JedisException e) {
-            // JedisException should be caught by fetchBase64JksFromRedis, but as a safeguard:
+        } catch (RedisException e) {
+            // RedisException should be caught by fetchBase64JksFromRedis, but as a safeguard:
             log.error("Redis connection error during HttpClient customization for key '{}': {}. HttpClient will not be customized.",
                     this.jksKeyInRedis, e.getMessage(), e);
             return httpClient;
@@ -108,10 +114,11 @@ public class RedisTrustStoreHttpClientCustomizer implements HttpClientCustomizer
     }
 
     // Made package-private for easier testing if needed, though spies are preferred.
-    String fetchBase64JksFromRedis(String key) throws JedisException {
+    String fetchBase64JksFromRedis(String key) throws RedisException {
         log.debug("Attempting to fetch Base64 JKS from Redis with key: {}", key);
-        try (Jedis jedis = jedisConnectionProvider.get()) {
-            String base64Jks = jedis.get(key);
+        try (StatefulRedisConnection<String, String> connection = lettuceConnectionProvider.get()) {
+            RedisStringCommands<String, String> syncCommands = connection.sync();
+            String base64Jks = syncCommands.get(key);
             if (base64Jks != null && !base64Jks.isEmpty()) {
                 log.info("Successfully fetched Base64 JKS data from Redis for key: {}", key);
                 return base64Jks;
@@ -119,11 +126,11 @@ public class RedisTrustStoreHttpClientCustomizer implements HttpClientCustomizer
                 log.warn("No data found in Redis for key: {}, or data is empty.", key);
                 return null;
             }
-        } catch (JedisException e) {
-            log.error("JedisException while fetching JKS from Redis for key '{}': {}", key, e.getMessage(), e);
-            throw e; // Propagate JedisException
+        } catch (RedisException e) {
+            log.error("RedisException while fetching JKS from Redis for key '{}': {}", key, e.getMessage(), e);
+            throw e; // Propagate RedisException
         }
-        // Removed generic Exception catch to let JedisException propagate clearly.
+        // Removed generic Exception catch to let RedisException propagate clearly.
     }
 
     // Made package-private for easier testing.

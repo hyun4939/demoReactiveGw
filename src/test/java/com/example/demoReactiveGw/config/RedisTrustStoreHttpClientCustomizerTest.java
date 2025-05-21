@@ -2,19 +2,24 @@ package com.example.demoReactiveGw.config;
 
 import io.netty.handler.ssl.SslContext;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.lenient;
 
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.SslProvider;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.exceptions.JedisException;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.api.sync.RedisStringCommands;
+import io.lettuce.core.RedisException;
 
 import javax.net.ssl.TrustManagerFactory;
+import java.security.KeyStore;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -32,9 +37,11 @@ public class RedisTrustStoreHttpClientCustomizerTest {
     private RedisTrustStoreHttpClientCustomizer customizer;
 
     @Mock
-    private Jedis mockJedis;
+    private StatefulRedisConnection<String, String> mockLettuceConnection;
     @Mock
-    private RedisTrustStoreHttpClientCustomizer.JedisConnectionProvider mockJedisProvider;
+    private RedisCommands<String, String> mockLettuceCommands; // Changed type here
+    @Mock
+    private RedisTrustStoreHttpClientCustomizer.LettuceConnectionProvider mockLettuceProvider;
     @Mock
     private HttpClient mockHttpClient;
     @Mock
@@ -67,8 +74,12 @@ public class RedisTrustStoreHttpClientCustomizerTest {
     @BeforeEach
     void setUp() {
         // Use the test constructor with the mocked provider
-        customizer = new RedisTrustStoreHttpClientCustomizer(validJksKeyInRedis, validJksPassword, mockJedisProvider);
-        when(mockJedisProvider.get()).thenReturn(mockJedis); // Ensure the provider returns the mock Jedis
+        customizer = new RedisTrustStoreHttpClientCustomizer(validJksKeyInRedis, validJksPassword, mockLettuceProvider);
+        lenient().when(mockLettuceProvider.get()).thenReturn(mockLettuceConnection); // Provider returns the mock connection
+        lenient().when(mockLettuceConnection.sync()).thenReturn(mockLettuceCommands); // Connection returns mock commands
+        // Mock the close() method of StatefulRedisConnection as it's called in a try-with-resources block
+        // and returns void. Using thenAnswer to avoid issues with thenReturn(null) for void methods.
+        lenient().doAnswer(invocation -> null).when(mockLettuceConnection).close();
     }
 
     // --- decodeJks Tests ---
@@ -130,46 +141,45 @@ public class RedisTrustStoreHttpClientCustomizerTest {
     // --- fetchBase64JksFromRedis Tests ---
     @Test
     void fetchBase64JksFromRedis_keyExists_returnsJksString() {
-        when(mockJedis.get(validJksKeyInRedis)).thenReturn(sampleValidBase64);
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenReturn(sampleValidBase64);
         String result = customizer.fetchBase64JksFromRedis(validJksKeyInRedis);
         assertEquals(sampleValidBase64, result);
-        verify(mockJedis).close();
+        verify(mockLettuceConnection).close();
     }
 
     @Test
     void fetchBase64JksFromRedis_keyNotFound_returnsNull() {
-        when(mockJedis.get(validJksKeyInRedis)).thenReturn(null);
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenReturn(null);
         assertNull(customizer.fetchBase64JksFromRedis(validJksKeyInRedis));
-        verify(mockJedis).close();
+        verify(mockLettuceConnection).close();
     }
 
     @Test
-    void fetchBase64JksFromRedis_redisError_throwsJedisException() {
-        when(mockJedis.get(validJksKeyInRedis)).thenThrow(new JedisException("Connection error"));
-        assertThrows(JedisException.class, () -> customizer.fetchBase64JksFromRedis(validJksKeyInRedis));
-        verify(mockJedis).close();
+    void fetchBase64JksFromRedis_redisError_throwsRedisException() {
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenThrow(new RedisException("Connection error"));
+        assertThrows(RedisException.class, () -> customizer.fetchBase64JksFromRedis(validJksKeyInRedis));
+        verify(mockLettuceConnection).close();
     }
 
     // --- customize Tests ---
     @Test
     void customize_fetchReturnsNull_returnsOriginalClient() {
         // Simulate fetchBase64JksFromRedis returning null (e.g. key not found)
-        // Need to use a spy or ensure the mocked Jedis (via provider) returns null
-        when(mockJedis.get(validJksKeyInRedis)).thenReturn(null);
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenReturn(null);
 
         HttpClient result = customizer.customize(mockHttpClient);
         assertSame(mockHttpClient, result);
-        verify(mockHttpClient, never()).secure(any());
+        verify(mockHttpClient, never()).secure(any(Consumer.class)); // Specified Consumer.class
     }
     
     @Test
-    void customize_jedisThrowsException_returnsOriginalClient() {
-        when(mockJedisProvider.get()).thenReturn(mockJedis); // Already in setup, but explicit for clarity
-        when(mockJedis.get(validJksKeyInRedis)).thenThrow(new JedisException("Simulated Redis Error"));
+    void customize_lettuceThrowsException_returnsOriginalClient() {
+        // Ensure provider and connection sync are correctly mocked as per setUp
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenThrow(new RedisException("Simulated Redis Error"));
 
         HttpClient result = customizer.customize(mockHttpClient);
 
-        assertSame(mockHttpClient, result, "HttpClient should be the original one on JedisException.");
+        assertSame(mockHttpClient, result, "HttpClient should be the original one on RedisException.");
         verify(mockHttpClient, never()).secure(any(Consumer.class));
     }
 
@@ -177,40 +187,41 @@ public class RedisTrustStoreHttpClientCustomizerTest {
     @Test
     void customize_decodeJksThrowsException_returnsOriginalClient() {
         // fetchBase64JksFromRedis returns an invalid Base64 string
-        when(mockJedis.get(validJksKeyInRedis)).thenReturn("This is not Base64");
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenReturn("This is not Base64");
 
         HttpClient result = customizer.customize(mockHttpClient);
         assertSame(mockHttpClient, result);
-        verify(mockHttpClient, never()).secure(any());
+        verify(mockHttpClient, never()).secure(any(Consumer.class)); // Specified Consumer.class
     }
 
     @Test
     void customize_createTrustManagerFactoryThrowsException_returnsOriginalClient() {
         // fetchBase64JksFromRedis returns a valid Base64 string, but it's not a valid JKS format
         // This will cause createTrustManagerFactory to throw an IOException (or similar).
-        when(mockJedis.get(validJksKeyInRedis)).thenReturn(Base64.getEncoder().encodeToString("not a jks".getBytes()));
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenReturn(Base64.getEncoder().encodeToString("not a jks".getBytes()));
 
         HttpClient result = customizer.customize(mockHttpClient);
         assertSame(mockHttpClient, result);
-        verify(mockHttpClient, never()).secure(any());
+        verify(mockHttpClient, never()).secure(any(Consumer.class)); // Specified Consumer.class
     }
 
     @Test
     @Disabled("Skipped: Complex test requiring a fully valid Base64 JKS and potentially deeper mocking/spying on SslContextBuilder if issues arise.")
     void customize_validConfig_appliesSslContext() throws Exception {
         // Spy on the customizer to allow mocking its own methods if needed,
-        // but primarily relying on the injected mockJedisProvider.
+        // but primarily relying on the injected mockLettuceProvider.
         RedisTrustStoreHttpClientCustomizer spiedCustomizer = spy(
-            new RedisTrustStoreHttpClientCustomizer(validJksKeyInRedis, validJksPassword, mockJedisProvider)
+            new RedisTrustStoreHttpClientCustomizer(validJksKeyInRedis, validJksPassword, mockLettuceProvider)
         );
-        // Ensure the provider still returns the mockJedis for the spied instance
-        when(mockJedisProvider.get()).thenReturn(mockJedis);
+        // Ensure the provider still returns the mockLettuceConnection for the spied instance
+        when(mockLettuceProvider.get()).thenReturn(mockLettuceConnection);
+        when(mockLettuceConnection.sync()).thenReturn(mockLettuceCommands); // And commands from connection
 
 
-        // 1. Mock Jedis to return valid Base64 JKS
+        // 1. Mock Lettuce to return valid Base64 JKS
         // This 'actualValidBase64Jks' MUST be a real, loadable JKS for KeyStore.load to succeed.
         // The current placeholder will cause KeyStore.load to fail.
-        when(mockJedis.get(validJksKeyInRedis)).thenReturn(actualValidBase64Jks);
+        when(mockLettuceCommands.get(validJksKeyInRedis)).thenReturn(actualValidBase64Jks);
 
         // 2. Mock HttpClient behavior
         // When httpClient.secure(consumer) is called, it should return the same mockHttpClient.
